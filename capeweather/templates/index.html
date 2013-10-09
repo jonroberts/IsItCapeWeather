@@ -1,0 +1,131 @@
+<html>
+
+<head>
+<!-- set the website up as a mobile friendly app -->
+<!-- stop page scaling -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<!-- remove the browser ui when it's placed on the home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+
+
+<LINK REL=StyleSheet HREF="static/style.css" TYPE="text/css" MEDIA=screen>
+
+</head>
+
+<body onload="loadLocalInfo()">
+
+<!--<h4>{{header}}</h4>-->
+	
+<div id="answer">?</div>	
+<div id="reason">Is it cape weather?</div>	
+	
+
+<script type="text/javascript">
+function loadLocalInfo(){
+  if (navigator.geolocation)
+    {
+		navigator.geolocation.getCurrentPosition(getConditions,noLocation,{timeout:10000});	
+    }
+  else{
+  		console.log("There was a problem getting the info");
+  		document.getElementById("answer").innerHTML="X";
+  		document.getElementById("reason").innerHTML="Geolocation is not supported by this browser.";
+  	}
+}
+
+function getLastResult(){
+	if(typeof(Storage)!=="undefined")
+	  {
+		if(localStorage.lastResult!= null){
+			var result=JSON.parse(localStorage.lastResult);
+			var d=new Date(result["date"]);
+			result["date"]=d;
+			return result;
+		}
+		else{return null;}
+	  }
+	else
+	  {
+		return null;
+	  }
+}
+
+function noLocation(){
+	document.getElementById("answer").innerHTML="X";
+	document.getElementById("reason").innerHTML="There was an error getting your location.";
+}
+
+function storeResult(result){
+	if(typeof(Storage)!=="undefined")
+	  {
+		  if(result!="undefined"){
+			  localStorage.lastResult=JSON.stringify(result);
+		  }
+	  }
+	else
+	  {
+		  // skip the case where we have no storage
+	  }	
+}
+
+function printResult(result){
+	console.log(result);
+	var temp=parseInt(result["temp"]);
+	var rain=(result["rain"]==true)?true:false;
+
+	if(rain){
+		document.getElementById("answer").innerHTML="No";
+		document.getElementById("reason").innerHTML="It's raining";
+	}
+	else if(temp<51){
+		document.getElementById("answer").innerHTML="No";
+		document.getElementById("reason").innerHTML="It's "+temp+", wrap up warm in a coat";
+	}
+	else if(temp>56){
+		document.getElementById("answer").innerHTML="No";
+		document.getElementById("reason").innerHTML="It's "+temp+", you only need a cardigan";
+	}
+	else{
+		document.getElementById("answer").innerHTML="Yes!";
+		document.getElementById("reason").innerHTML="It's "+temp+", perfect cape weather";
+	}
+	
+}
+
+function getConditions(position){
+	console.log("In getConditions")
+	var longitude=position.coords.longitude;
+	var latitude=position.coords.latitude;
+	var now=new Date();
+	
+	console.log("Getting conditions");
+	
+	var last=getLastResult();
+	if(last!=null){
+		if(now.getTime()-last["date"].getTime()<30*60*1000) // check if it's been recently called. If so, use cached values.
+		{
+			console.log("Using value from local storage!");
+			printResult(last);
+			return;
+		}
+	}
+
+	console.log("Querying server");
+    var xmlHttp = null;
+
+    xmlHttp = new XMLHttpRequest();
+	theUrl="http://isitcapeweather.com/getWeather?long="+longitude+"&lat="+latitude;
+    xmlHttp.open( "GET", theUrl, false );
+    xmlHttp.send( null );
+    var result=JSON.parse(xmlHttp.responseText);
+    result["date"]=now;
+    
+    storeResult(result);
+	printResult(result);
+	return;
+
+}
+</script>
+	
+</body>
+</html>
